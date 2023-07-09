@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
+#run.py
 import os
 import argparse
 import shutil
@@ -44,11 +42,9 @@ if __name__ == "__main__":
 
     ## Stage 1: Overall Quality Improve
     print("Running Stage 1: Overall restoration")
-    os.chdir("./Global")
-    stage_1_input_dir = os.path.dirname(opts.input_image)
-    stage_1_output_dir = os.path.join(opts.output_folder, "stage_1_restore_output")
-    if not os.path.exists(stage_1_output_dir):
-        os.makedirs(stage_1_output_dir)
+    os.chdir("/usr/src/app/oldphotosource/Global")
+    stage_1_input_dir = opts.input_image
+    stage_1_output_dir = opts.output_folder
 
     if not opts.with_scratch:
         stage_1_command = (
@@ -93,14 +89,5 @@ if __name__ == "__main__":
 
         run_cmd(stage_1_command_1)
         run_cmd(stage_1_command_2)
-
-    ## Solve the case when there is no face in the old photo
-    stage_1_results = os.path.join(stage_1_output_dir, "restored_image")
-    stage_4_output_dir = os.path.join(opts.output_folder, "final_output")
-    if not os.path.exists(stage_4_output_dir):
-        os.makedirs(stage_4_output_dir)
-    for x in os.listdir(stage_1_results):
-        img_dir = os.path.join(stage_1_results, x)
-        shutil.copy(img_dir, stage_4_output_dir)
 
     print("All the processing is done. Please check the results.")
