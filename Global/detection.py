@@ -1,6 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
+#detection.py
 import argparse
 import gc
 import json
@@ -100,10 +98,8 @@ def main(config):
     model.eval()
 
     ## dataloader and transformation
-    print("directory of testing image: " + config.test_path)
-    imagelist = os.listdir(config.test_path)
-    imagelist.sort()
-    total_iter = 0
+    print("processing image: " + config.test_path)
+    image_name = os.path.basename(config.test_path)
 
     P_matrix = {}
     save_url = os.path.join(config.output_dir)
@@ -111,63 +107,51 @@ def main(config):
 
     input_dir = os.path.join(save_url, "input")
     output_dir = os.path.join(save_url, "mask")
-    # blend_output_dir=os.path.join(save_url, 'blend_output')
+
     mkdir_if_not(input_dir)
     mkdir_if_not(output_dir)
-    # mkdir_if_not(blend_output_dir)
 
-    idx = 0
+    print("processing", image_name)
 
-    results = []
-    for image_name in imagelist:
+    scratch_file = config.test_path
+    scratch_image = Image.open(scratch_file).convert("RGB")
+    w, h = scratch_image.size
 
-        idx += 1
+    transformed_image_PIL = data_transforms(scratch_image, config.input_size)
+    scratch_image = transformed_image_PIL.convert("L")
+    scratch_image = tv.transforms.ToTensor()(scratch_image)
+    scratch_image = tv.transforms.Normalize([0.5], [0.5])(scratch_image)
+    scratch_image = torch.unsqueeze(scratch_image, 0)
+    _, _, ow, oh = scratch_image.shape
+    scratch_image_scale = scale_tensor(scratch_image)
 
-        print("processing", image_name)
+    if config.GPU >= 0:
+        scratch_image_scale = scratch_image_scale.to(config.GPU)
+    else:
+        scratch_image_scale = scratch_image_scale.cpu()
+    with torch.no_grad():
+        P = torch.sigmoid(model(scratch_image_scale))
 
-        scratch_file = os.path.join(config.test_path, image_name)
-        if not os.path.isfile(scratch_file):
-            print("Skipping non-file %s" % image_name)
-            continue
-        scratch_image = Image.open(scratch_file).convert("RGB")
-        w, h = scratch_image.size
+    P = P.data.cpu()
+    P = F.interpolate(P, [ow, oh], mode="nearest")
 
-        transformed_image_PIL = data_transforms(scratch_image, config.input_size)
-        scratch_image = transformed_image_PIL.convert("L")
-        scratch_image = tv.transforms.ToTensor()(scratch_image)
-        scratch_image = tv.transforms.Normalize([0.5], [0.5])(scratch_image)
-        scratch_image = torch.unsqueeze(scratch_image, 0)
-        _, _, ow, oh = scratch_image.shape
-        scratch_image_scale = scale_tensor(scratch_image)
-
-        if config.GPU >= 0:
-            scratch_image_scale = scratch_image_scale.to(config.GPU)
-        else:
-            scratch_image_scale = scratch_image_scale.cpu()
-        with torch.no_grad():
-            P = torch.sigmoid(model(scratch_image_scale))
-
-        P = P.data.cpu()
-        P = F.interpolate(P, [ow, oh], mode="nearest")
-
-        tv.utils.save_image(
-            (P >= 0.4).float(),
-            os.path.join(
-                output_dir,
-                image_name[:-4] + ".png",
-            ),
-            nrow=1,
-            padding=0,
-            normalize=True,
-        )
-        transformed_image_PIL.save(os.path.join(input_dir, image_name[:-4] + ".png"))
-        gc.collect()
-        torch.cuda.empty_cache()
+    tv.utils.save_image(
+        (P >= 0.4).float(),
+        os.path.join(
+            output_dir,
+            image_name[:-4] + ".png",
+        ),
+        nrow=1,
+        padding=0,
+        normalize=True,
+    )
+    transformed_image_PIL.save(os.path.join(input_dir, image_name[:-4] + ".png"))
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--checkpoint_name', type=str, default="FT_Epoch_latest.pt", help='Checkpoint Name')
 
     parser.add_argument("--GPU", type=int, default=0)
     parser.add_argument("--test_path", type=str, default=".")
