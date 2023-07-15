@@ -93,7 +93,9 @@ def main(config):
 
     if config.GPU >= 0:
         model.to(config.GPU)
+        print('GPU')
     else: 
+        print('CPU')
         model.cpu()
     model.eval()
 
