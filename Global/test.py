@@ -66,7 +66,9 @@ def parameter_set(opt):
     opt.mapping_n_block = 6
     opt.map_mc = 512
     opt.no_instance = True
-    opt.checkpoints_dir = "./checkpoints/restoration"
+    #opt.checkpoints_dir = "./checkpoints/restoration"
+    opt.checkpoints_dir = os.path.join(os.path.dirname(__file__), "checkpoints/restoration")
+
     ##
 
     if opt.Quality_restore:
@@ -105,14 +107,26 @@ if __name__ == "__main__":
     )
     mask_transform = transforms.ToTensor()
 
+    #input_name = os.path.basename(opt.test_input)
+    #input_file = opt.test_input
+    #print(input_name)
+    #if not os.path.isfile(input_file):
+    #    print("Skipping non-file %s" % input_name)
+    #    exit()
+    #input = Image.open(input_file).convert("RGB")
+    #
+    #print("Now you are processing %s" % (input_name))
+
     input_name = os.path.basename(opt.test_input)
-    input_file = opt.test_input
+    input_file = os.path.join("/usr/src/app/", opt.test_input)
+    print(input_name)
+    print(input_file)
     if not os.path.isfile(input_file):
         print("Skipping non-file %s" % input_name)
         exit()
     input = Image.open(input_file).convert("RGB")
-
     print("Now you are processing %s" % (input_name))
+
 
     if opt.NL_use_mask:
         mask_name = os.path.basename(opt.test_mask)
